@@ -11,8 +11,7 @@ Executable:
     butterworth
 
 Build:
-    Executable was built with:
-        gcc butterworth.c imgIo.c Four2.c -lm -o butterworth
+    make
 
 Run:
     Get the help menu by calling the executable with the help flag:
