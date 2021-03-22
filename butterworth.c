@@ -6,7 +6,7 @@
 #include <math.h>
 
 static unsigned ORDER = 4;  // order of the filter
-static float CUTOFF = 2000;  // cutoff frequency
+static float CUTOFF = 200;  // cutoff frequency
 
 
 void print_help(){
@@ -22,18 +22,6 @@ float mag(float r, float i)
     return sqrt(pow(r, 2) + pow(i, 2));
 }
 
-
-float butterworth(float r, float im)
-{
-    // take in x and return x multiplied by the filter
-    float mag_ = mag(r, im);
-    float filter_term;
-
-    filter_term = 1 / (1 + pow((mag_ / CUTOFF), 2 * ORDER));
-    return filter_term;
-}
-
-
 void save_spectrum(char imgName[], float *fft_1D_array, unsigned sizeX, unsigned sizeY)
 {
     // take in name of output image, a 1D float array, and original image dimensions
@@ -43,29 +31,32 @@ void save_spectrum(char imgName[], float *fft_1D_array, unsigned sizeX, unsigned
     // finally normalize and save the image
     float min = 100000;
     float max = -100000;
-    unsigned char temp;
-    unsigned char *spectrum1D;
-    spectrum1D = (unsigned char*) malloc(sizeof(unsigned char) * sizeX * sizeY);
+    float temp_f;
+
+    unsigned char *spectrum1D_u;
+    float *spectrum1D_f;
+    spectrum1D_f = (float*) malloc(sizeof(float) * sizeX * sizeY);
+    spectrum1D_u = (unsigned char*) malloc(sizeof(unsigned char) * sizeX * sizeY);
 
     for (unsigned i = 0; i < 2 * sizeX * sizeY; i+=2){
-        temp = mag(fft_1D_array[i], fft_1D_array[i + 1]);
-        spectrum1D[i/2] = temp;
+        temp_f = mag(fft_1D_array[i], fft_1D_array[i + 1]);
+        spectrum1D_f[i/2] = temp_f;
 
-        if (temp > max){
-            max = temp;
+        if (temp_f > max){
+            max = temp_f;
         }
-        if (temp < min){
-            min = temp;
+        if (temp_f < min){
+            min = temp_f;
         }
     }
 
     // normalize
     for (unsigned i = 0; i < sizeX * sizeY; i++){
-        spectrum1D[i] = 255 * (spectrum1D[i] - min)/(max - min);
+        spectrum1D_u[i] = 255 * (spectrum1D_f[i] - min)/(max - min);
     }
 
     // save image
-    writeImg(imgName, spectrum1D, sizeX, sizeY);
+    writeImg(imgName, spectrum1D_u, sizeX, sizeY);
 }
 
 
@@ -122,14 +113,16 @@ int main(int argc, char *argv[])
         save_spectrum(spectrumName, imgFFT, sizeX, sizeY);
     }
 
-    // apply a centered filter. the filter value of a index (u, v) is calculated
-    // from the values at index (|u-N/2|, |v-N/2|)
-    float filter_val;
-    for (unsigned i = 0; i < sizeX * sizeY; i++){
-        filter_val = butterworth(imgFFT[abs(i * 2 - sizeX * sizeY / 2)], imgFFT[abs(i * 2 - sizeX * sizeY / 2) + 1]);
-        if (filter_val != 1.0){
-            imgFFT[2 * i] *= filter_val;
-            imgFFT[2 * i + 1] *= filter_val;
+    // apply the centered Butterworth filter
+    float u, v, d, filter_val;
+    for (unsigned i = 0; i < sizeY; i++){
+        for (unsigned j = 0; j < sizeX; j++){
+            u = (float)j - (float)(sizeX/2);
+            v = (float)i - (float)(sizeY/2);
+            d = sqrt(u*u + v*v);
+            filter_val = 1/(1 + pow(d / CUTOFF, 2));
+            imgFFT[2*(sizeX * i + j)] *= filter_val;
+            imgFFT[2*(sizeX * i + j) + 1] *= filter_val;
         }
     }
 
@@ -139,7 +132,6 @@ int main(int argc, char *argv[])
     for (unsigned i = 0; i < 2 * sizeX * sizeY; i++){
         imgFFTInv[i] = imgFFT[i];
     }
-
 
     // if power is true, calculate the power and leave
     if (power){
@@ -155,7 +147,6 @@ int main(int argc, char *argv[])
 
     fft_Four2(imgFFTInv, sizeX, sizeY, true);
 
-
     unsigned char *outImg;
     outImg = (unsigned char *) calloc(sizeof(unsigned char), sizeX * sizeY);
     for (unsigned i = 0; i < sizeX * sizeY; i++){
@@ -163,7 +154,6 @@ int main(int argc, char *argv[])
         outImg[i] = abs(imgFFTInv[2 * i]);
     }
     writeImg(outName, outImg, sizeX, sizeY);
-
 
     return 0;
 
