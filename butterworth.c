@@ -115,6 +115,8 @@ int main(int argc, char *argv[])
 
     // apply the centered Butterworth filter
     float u, v, d, filter_val;
+    int temp;
+    long total_power = 0;
     for (unsigned i = 0; i < sizeY; i++){
         for (unsigned j = 0; j < sizeX; j++){
             u = (float)j - (float)(sizeX/2);
@@ -123,8 +125,29 @@ int main(int argc, char *argv[])
             filter_val = 1/(1 + pow(d / CUTOFF, 2));
             imgFFT[2*(sizeX * i + j)] *= filter_val;
             imgFFT[2*(sizeX * i + j) + 1] *= filter_val;
+
+            if (power && (d < CUTOFF)) {
+                total_power = total_power + pow(imgFFT[2*(sizeX * i + j)], 2) + pow(imgFFT[2*(sizeX * i + j) + 1] , 2);
+            }
         }
     }
+
+    if (power){
+        printf("Total power: %ld\n", total_power);
+        return 0;
+    }
+
+    // // if power is true, calculate the power and leave
+    // if (power){
+    //     int temp;
+    //     long total_power = 0;
+    //     for (unsigned i = 0; i < 2 * sizeX * sizeY; i += 2){
+    //         temp = pow(imgFFT[i], 2) + pow(imgFFT[i + 1], 2);
+    //         total_power += temp;
+    //     }
+    //     printf("Total power: %ld\n", total_power);
+    //     return 0;
+    // }
 
     // create imgFFTInv, copy imgFFT into it and apply the inverse fourier to it
     float *imgFFTInv;
@@ -133,17 +156,7 @@ int main(int argc, char *argv[])
         imgFFTInv[i] = imgFFT[i];
     }
 
-    // if power is true, calculate the power and leave
-    if (power){
-        int temp;
-        long total_power = 0;
-        for (unsigned i = 0; i < 2 * sizeX * sizeY; i += 2){
-            temp = pow(imgFFTInv[i], 2) + pow(imgFFTInv[i + 1], 2);
-            total_power += temp;
-        }
-        printf("Total power: %ld\n", total_power);
-        return 0;
-    }
+
 
     fft_Four2(imgFFTInv, sizeX, sizeY, true);
 
