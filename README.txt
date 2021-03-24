@@ -18,11 +18,15 @@ Run:
         ./butterworth --help
 
     Help menu:
-        """
+
+        ********************************** Butterworth LPF **********************************
+
         Please run the butterworth LPF as follows:
-            ./butterworth <image_path> <power>
+
+            ./butterworth <image_path> <power> <cutoff>
 
             <image_path>    Full path to an image
-            <power>         1 for only calculating the spectrum of the input image.
-                            0 for outputting images for the spectrum and filtered image
-        """
+            <power>     1 for only calculating the power of the filtered input image.
+                    0 for outputting images for the spectrum and filtered image
+            <cutoff>    Filter Cutoff Frequency (int)
+

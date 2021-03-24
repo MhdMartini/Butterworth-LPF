@@ -6,14 +6,15 @@
 #include <math.h>
 
 static unsigned ORDER = 4;  // order of the filter
-static float CUTOFF = 200;  // cutoff frequency
 
 
 void print_help(){
     // print help menu
-    printf("Please run the butterworth LPF as follows:\n\t./butterworth <image_path> <power>\n");
+    printf("\n********************************** Butterworth LPF **********************************\n\n");
+    printf("Please run the butterworth LPF as follows:\n\n\t./butterworth <image_path> <power> <cutoff>\n");
     printf("\n\t<image_path>\tFull path to an image");
-    printf("\n\t<power>\t\t1 for only calculating the power of the filtered input image.\n\t\t\t0 for outputting images for the spectrum and filtered image\n");
+    printf("\n\t<power>\t\t1 for only calculating the power of the filtered input image.\n\t\t\t0 for outputting images for the spectrum and filtered image");
+    printf("\n\t<cutoff>\tFilter Cutoff Frequency (int)\n");
 }
 
 float mag(float r, float i)
@@ -64,7 +65,7 @@ int main(int argc, char *argv[])
 {
     // handle input arguments
     bool power;
-    if (argc != 3){
+    if (argc != 4){
         print_help();
         return 0;
     }
@@ -73,7 +74,9 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+
     power = strcmp(argv[2], "0");
+    long CUTOFF = strtol(argv[3], NULL, 10);  // cutoff frequency - str to long of base 10
     char spectrumName[] = "spectrum.pgm";
     char outName[] = "filtered.pgm";
 
@@ -106,17 +109,16 @@ int main(int argc, char *argv[])
     // apply forward ft on the resulting array
     fft_Four2(imgFFT, sizeX, sizeY, false);
 
-    // save the spectrum as a pgm image
-
     if (!power){
         // save the spectrum as a pgm image. Skip if power argument is 1
         save_spectrum(spectrumName, imgFFT, sizeX, sizeY);
     }
 
-    // apply the centered Butterworth filter
+    // apply the centered Butterworth filter. If "power" is selected, calculate power and leave
     float u, v, d, filter_val;
     int temp;
     long total_power = 0;
+    float mag_;
     for (unsigned i = 0; i < sizeY; i++){
         for (unsigned j = 0; j < sizeX; j++){
             u = (float)j - (float)(sizeX/2);
@@ -127,7 +129,8 @@ int main(int argc, char *argv[])
             imgFFT[2*(sizeX * i + j) + 1] *= filter_val;
 
             if (power && (d < CUTOFF)) {
-                total_power = total_power + pow(imgFFT[2*(sizeX * i + j)], 2) + pow(imgFFT[2*(sizeX * i + j) + 1] , 2);
+                mag_ = mag(imgFFT[2*(sizeX * i + j)], imgFFT[2*(sizeX * i + j) + 1]);
+                total_power += pow(mag_, 2);
             }
         }
     }
@@ -137,26 +140,12 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    // // if power is true, calculate the power and leave
-    // if (power){
-    //     int temp;
-    //     long total_power = 0;
-    //     for (unsigned i = 0; i < 2 * sizeX * sizeY; i += 2){
-    //         temp = pow(imgFFT[i], 2) + pow(imgFFT[i + 1], 2);
-    //         total_power += temp;
-    //     }
-    //     printf("Total power: %ld\n", total_power);
-    //     return 0;
-    // }
-
     // create imgFFTInv, copy imgFFT into it and apply the inverse fourier to it
     float *imgFFTInv;
     imgFFTInv = (float*) calloc(sizeof(float), 2 * sizeX * sizeY);
     for (unsigned i = 0; i < 2 * sizeX * sizeY; i++){
         imgFFTInv[i] = imgFFT[i];
     }
-
-
 
     fft_Four2(imgFFTInv, sizeX, sizeY, true);
 
